@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Resume Analyzer</title>
+  <link rel="stylesheet" href="../static/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">ResumeAI</span>
+      </div>
+      <p class="header-tagline">ATS Compatibility Analyzer</p>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge"></div>
+    <h1 class="hero-title">
+      Know Your <span class="highlight">ATS Score</span><br />
+      Before You Apply
+    </h1>
+    <p class="hero-subtitle">
+      Upload your resume and paste a job description. it analyzes
+      keyword alignment, semantic similarity, and gives you an actionable score.
+    </p>
+  </section>
+
+  <!-- MAIN FORM -->
+  <main class="container">
+    <form id="analyzeForm" enctype="multipart/form-data">
+      <div class="form-grid">
+
+        <!-- Resume Upload -->
+        <div class="form-card">
+          <div class="card-label">
+            <span class="step-num">01</span>
+            <span>Upload Resume</span>
+          </div>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="resumeInput" name="resume" accept=".pdf" hidden />
+            <div class="upload-content" id="uploadContent">
+              <div class="upload-icon">📄</div>
+              <p class="upload-title">Drop your PDF here</p>
+              <p class="upload-sub">or <button type="button" class="browse-btn" onclick="document.getElementById('resumeInput').click()">browse files</button></p>
+              <p class="upload-hint">PDF only &middot; Max 5MB</p>
+            </div>
+            <div class="file-preview" id="filePreview" style="display:none;">
+              <span class="file-icon">✅</span>
+              <span id="fileName">resume.pdf</span>
+              <button type="button" class="remove-btn" onclick="removeFile()">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Job Description -->
+        <div class="form-card">
+          <div class="card-label">
+            <span class="step-num">02</span>
+            <span>Paste Job Description</span>
+          </div>
+          <textarea
+            id="jobDescription"
+            name="job_description"
+            class="jd-textarea"
+            placeholder="Paste the full job description here…&#10;&#10;Include responsibilities, requirements, and skills to get the most accurate ATS score."
+          ></textarea>
+          <div class="char-count" id="charCount">0 characters</div>
+        </div>
+
+      </div>
+
+      <div class="submit-wrap">
+        <button type="submit" class="analyze-btn" id="analyzeBtn">
+          <span class="btn-text">Analyze Resume</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </div>
+    </form>
+
+    <!-- ERROR BOX -->
+    <div class="error-box" id="errorBox" style="display:none;">
+      <span>⚠️</span>
+      <span id="errorText"></span>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p class="loading-title">Analyzing your resume…</p>
+        <p class="loading-sub">Running NLP · Calculating similarity · Matching keywords</p>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <section class="results" id="resultsSection" style="display:none;">
+
+      <!-- Score Hero -->
+      <div class="score-hero">
+        <div class="score-ring-wrap">
+          <svg class="score-ring" viewBox="0 0 160 160">
+            <circle class="ring-bg"   cx="80" cy="80" r="68" />
+            <circle class="ring-fill" cx="80" cy="80" r="68" id="ringFill" />
+          </svg>
+          <div class="score-center">
+            <span class="score-number" id="scoreNumber">0</span>
+            <span class="score-pct">%</span>
+          </div>
+        </div>
+        <div class="score-meta">
+          <div class="score-rating" id="scoreRating">—</div>
+          <p class="score-desc">ATS Compatibility Score</p>
+          <div class="score-breakdown">
+            <div class="breakdown-item">
+              <span class="breakdown-label">Semantic Similarity</span>
+              <span class="breakdown-val" id="simScore">—</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">Keyword Match</span>
+              <span class="breakdown-val" id="kwScore">—</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">Resume Words</span>
+              <span class="breakdown-val" id="resumeWords">—</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">JD Words</span>
+              <span class="breakdown-val" id="jdWords">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keywords -->
+      <div class="keyword-grid">
+        <div class="keyword-card">
+          <div class="keyword-card-header">
+            <span>✅</span>
+            <h3>Matched Keywords</h3>
+            <span class="kw-count matched-count" id="matchedCount">0</span>
+          </div>
+          <div class="keyword-tags" id="matchedKeywords"></div>
+        </div>
+        <div class="keyword-card">
+          <div class="keyword-card-header">
+            <span>❌</span>
+            <h3>Missing Keywords</h3>
+            <span class="kw-count missing-count" id="missingCount">0</span>
+          </div>
+          <div class="keyword-tags" id="missingKeywords"></div>
+        </div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="recommendations">
+        <h3 class="rec-title">
+          <span>💡</span> Recommendations to Improve Your Score
+        </h3>
+        <ul class="rec-list" id="recList"></ul>
+      </div>
+
+      <div class="reanalyze-wrap">
+        <button class="reanalyze-btn" onclick="resetForm()">↩ Analyze Another Resume</button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>Built with Flask · spaCy · scikit-learn &nbsp;|&nbsp; AI Resume Analyzer</p>
+  </footer>
+
+  <script>
+    // ── Drag & Drop ──
+    const uploadZone = document.getElementById('uploadZone');
+    const resumeInput = document.getElementById('resumeInput');
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/pdf') setFile(file);
+      else showError('Please drop a valid PDF file.');
+    });
+    resumeInput.addEventListener('change', () => {
+      if (resumeInput.files[0]) setFile(resumeInput.files[0]);
+    });
+
+    function setFile(file) {
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('filePreview').style.display = 'flex';
+      document.getElementById('uploadContent').style.display = 'none';
+    }
+    function removeFile() {
+      resumeInput.value = '';
+      document.getElementById('filePreview').style.display = 'none';
+      document.getElementById('uploadContent').style.display = 'flex';
+    }
+
+    // ── Char Counter ──
+    document.getElementById('jobDescription').addEventListener('input', function() {
+      const len = this.value.length;
+      document.getElementById('charCount').textContent = `${len.toLocaleString()} character${len !== 1 ? 's' : ''}`;
+    });
+
+    // ── Form Submit ──
+    document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+      if (!resumeInput.files[0]) { showError('Please upload a PDF resume first.'); return; }
+      if (!document.getElementById('jobDescription').value.trim()) { showError('Please paste a job description.'); return; }
+
+      showLoading(true);
+      const formData = new FormData();
+      formData.append('resume', resumeInput.files[0]);
+      formData.append('job_description', document.getElementById('jobDescription').value);
+
+      try {
+        const res = await fetch('/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) { showError(data.error || 'Analysis failed.'); return; }
+        renderResults(data);
+      } catch(err) {
+        showError('Network error. Make sure the Flask server is running.');
+      } finally {
+        showLoading(false);
+      }
+    });
+
+    // ── Render Results ──
+    function renderResults(data) {
+      document.getElementById('analyzeForm').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'block';
+
+      animateScore(data.ats_score);
+
+      const ratingEl = document.getElementById('scoreRating');
+      ratingEl.textContent = data.rating;
+      ratingEl.style.color = data.rating_color;
+
+      document.getElementById('simScore').textContent = `${data.similarity_score}%`;
+      document.getElementById('kwScore').textContent = `${data.keyword_match_score}%`;
+      document.getElementById('resumeWords').textContent = data.resume_word_count.toLocaleString();
+      document.getElementById('jdWords').textContent = data.jd_word_count.toLocaleString();
+
+      renderTags('matchedKeywords', data.matched_keywords, 'matched');
+      renderTags('missingKeywords', data.missing_keywords, 'missing');
+      document.getElementById('matchedCount').textContent = data.match_count;
+      document.getElementById('missingCount').textContent = data.missing_keywords.length;
+
+      document.getElementById('recList').innerHTML = data.recommendations
+        .map(r => `<li class="rec-item">${r}</li>`).join('');
+
+      setTimeout(() => document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+
+    function animateScore(target) {
+      const ringFill = document.getElementById('ringFill');
+      const scoreNum = document.getElementById('scoreNumber');
+      const circ = 2 * Math.PI * 68;
+      ringFill.style.strokeDasharray = circ;
+      ringFill.style.strokeDashoffset = circ;
+
+      const start = performance.now();
+      const dur = 1400;
+      (function update(now) {
+        const p = Math.min((now - start) / dur, 1);
+        const e = 1 - Math.pow(1 - p, 3);
+        const val = Math.round(e * target);
+        scoreNum.textContent = val;
+        ringFill.style.strokeDashoffset = circ - (e * target / 100) * circ;
+        ringFill.style.stroke = scoreColor(val);
+        if (p < 1) requestAnimationFrame(update);
+      })(start);
+    }
+
+    function scoreColor(s) {
+      if (s >= 80) return '#00C48C';
+      if (s >= 65) return '#3B82F6';
+      if (s >= 50) return '#F59E0B';
+      if (s >= 35) return '#F97316';
+      return '#EF4444';
+    }
+
+    function renderTags(id, words, type) {
+      const el = document.getElementById(id);
+      el.innerHTML = words && words.length
+        ? words.map(w => `<span class="kw-tag kw-${type}">${w}</span>`).join('')
+        : '<span class="no-kw">None found</span>';
+    }
+
+    function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+    function showError(msg) {
+      document.getElementById('errorText').textContent = msg;
+      const b = document.getElementById('errorBox');
+      b.style.display = 'flex';
+      b.scrollIntoView({ behavior: 'smooth' });
+    }
+    function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+    function resetForm() {
+      document.getElementById('resultsSection').style.display = 'none';
+      document.getElementById('analyzeForm').style.display = 'block';
+      removeFile();
+      document.getElementById('jobDescription').value = '';
+      document.getElementById('charCount').textContent = '0 characters';
+      hideError();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
